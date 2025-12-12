@@ -1,0 +1,713 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Rio Menu 🌴",
+    LoadingTitle = "Carregando...",
+    LoadingSubtitle = "Criador ByTz",
+})
+
+-- ======================
+-- Aba "Início"
+-- ======================
+local AbaInicio = Window:CreateTab("Início")
+AbaInicio:CreateLabel("Bem-Vindo a o 🌴Rio Menu BETA")
+
+-- ======================
+-- Aba "Visual"
+-- ======================
+local Visual = Window:CreateTab("Visual")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- ----------------------
+-- Toggle ESP Seguro
+-- ----------------------
+Visual:CreateToggle({
+    Name = "Ativar ESP",
+    CurrentValue = false,
+    Callback = function(Value)
+        local folder = workspace:FindFirstChild("PlayerESP_Seguro")
+        if Value then
+            if not folder then
+                folder = Instance.new("Folder")
+                folder.Name = "PlayerESP_Seguro"
+                folder.Parent = workspace
+            end
+
+            local function createEspForPlayer(plr)
+                if plr == LocalPlayer then return end
+                local char = plr.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+
+                if char:FindFirstChild(plr.Name.."_Highlight") then return end
+
+                local highlight = Instance.new("Highlight")
+                highlight.Name = plr.Name.."_Highlight"
+                highlight.FillColor = Color3.fromRGB(0, 170, 255)
+                highlight.OutlineColor = Color3.fromRGB(0,0,0)
+                highlight.FillTransparency = 0.5
+                highlight.Adornee = char
+                highlight.Parent = folder
+
+                local attachOrigin = Instance.new("Attachment")
+                attachOrigin.Name = "OriginAttach"
+                attachOrigin.Parent = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+
+                local attachTarget = Instance.new("Attachment")
+                attachTarget.Name = "TargetAttach"
+                attachTarget.Parent = hrp
+
+                local beam = Instance.new("Beam")
+                beam.Name = plr.Name.."_Beam"
+                beam.Attachment0 = attachOrigin
+                beam.Attachment1 = attachTarget
+                beam.Color = ColorSequence.new(Color3.fromRGB(0,170,255))
+                beam.Width0 = 0.05
+                beam.Width1 = 0.05
+                beam.FaceCamera = false
+                beam.LightInfluence = 0
+                beam.Parent = folder
+
+                plr.CharacterRemoving:Connect(function()
+                    if highlight then highlight:Destroy() end
+                    if beam then beam:Destroy() end
+                    if attachTarget then attachTarget:Destroy() end
+                end)
+            end
+
+            for _,plr in ipairs(Players:GetPlayers()) do
+                plr.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    createEspForPlayer(plr)
+                end)
+                if plr.Character then
+                    task.wait(1)
+                    createEspForPlayer(plr)
+                end
+            end
+
+            Players.PlayerAdded:Connect(function(plr)
+                plr.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    createEspForPlayer(plr)
+                end)
+            end)
+
+            print("ESP Seguro ativado!")
+        else
+            if folder then folder:Destroy() end
+            print("ESP Seguro desativado!")
+        end
+    end
+})
+
+-- ----------------------
+-- Toggle FullBright
+-- ----------------------
+Visual:CreateToggle({
+    Name = "FullBright",
+    CurrentValue = false,
+    Callback = function(Value)
+        local Lighting = game:GetService("Lighting")
+        if not Lighting:FindFirstChild("OriginalValues") then
+            local origFolder = Instance.new("Folder")
+            origFolder.Name = "OriginalValues"
+            origFolder.Parent = Lighting
+            origFolder:SetAttribute("Ambient", Lighting.Ambient)
+            origFolder:SetAttribute("OutdoorAmbient", Lighting.OutdoorAmbient)
+            origFolder:SetAttribute("Brightness", Lighting.Brightness)
+        end
+        local orig = Lighting:FindFirstChild("OriginalValues")
+
+        if Value then
+            Lighting.Ambient = Color3.new(1,1,1)
+            Lighting.OutdoorAmbient = Color3.new(1,1,1)
+            Lighting.Brightness = 2
+            print("FullBright ativado!")
+        else
+            if orig then
+                Lighting.Ambient = orig:GetAttribute("Ambient") or Color3.fromRGB(128,128,128)
+                Lighting.OutdoorAmbient = orig:GetAttribute("OutdoorAmbient") or Color3.fromRGB(128,128,128)
+                Lighting.Brightness = orig:GetAttribute("Brightness") or 1
+            end
+            print("FullBright desativado!")
+        end
+    end,
+})
+
+-- ----------------------
+-- Highlights ESP
+-- ----------------------
+local ESPEnabled = false
+local ESPTeamCheck = true
+local HighlightColor = Color3.fromRGB(0,170,255)
+
+local function createHighlightForPlayer(player)
+    if player == LocalPlayer then return end
+    local char = player.Character
+    if not char then return end
+    if char:FindFirstChild("ESPHighlight") then return end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESPHighlight"
+    highlight.FillColor = HighlightColor
+    highlight.OutlineColor = HighlightColor
+    highlight.FillTransparency = 0.5
+    highlight.Adornee = char
+    highlight.Enabled = ESPEnabled and (not ESPTeamCheck or player.Team ~= LocalPlayer.Team)
+    highlight.Parent = char
+end
+
+for _,player in ipairs(Players:GetPlayers()) do
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        createHighlightForPlayer(player)
+    end)
+    if player.Character then
+        createHighlightForPlayer(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        createHighlightForPlayer(player)
+    end)
+end)
+
+Visual:CreateToggle({
+    Name = "Ativar Highlights",
+    CurrentValue = false,
+    Callback = function(value)
+        ESPEnabled = value
+        for _,player in ipairs(Players:GetPlayers()) do
+            local highlight = player.Character and player.Character:FindFirstChild("ESPHighlight")
+            if highlight then
+                highlight.Enabled = value and (not ESPTeamCheck or player.Team ~= LocalPlayer.Team)
+            end
+        end
+    end
+})
+
+Visual:CreateToggle({
+    Name = "Ativar Check Time",
+    CurrentValue = true,
+    Callback = function(value)
+        ESPTeamCheck = value
+        for _,player in ipairs(Players:GetPlayers()) do
+            local highlight = player.Character and player.Character:FindFirstChild("ESPHighlight")
+            if highlight then
+                highlight.Enabled = ESPEnabled and (not value or player.Team ~= LocalPlayer.Team)
+            end
+        end
+    end
+})
+
+Visual:CreateColorPicker({
+    Name = "Cor do Highlight",
+    Color = HighlightColor,
+    Callback = function(value)
+        HighlightColor = value
+        for _,player in ipairs(Players:GetPlayers()) do
+            local highlight = player.Character and player.Character:FindFirstChild("ESPHighlight")
+            if highlight then
+                highlight.FillColor = value
+                highlight.OutlineColor = value
+            end
+        end
+    end
+})
+
+-- ======================
+-- Aba "Combate"
+-- ======================
+local Combate = Window:CreateTab("Combate")
+
+local AimbotEnabled = false
+local TeamCheck = true
+local WallCheck = true
+local FOVRadius = 100
+
+-- Criar FOV Circle
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Radius = FOVRadius
+FOVCircle.Color = Color3.fromRGB(0,170,255)
+FOVCircle.Thickness = 2
+FOVCircle.Filled = false
+
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y/2)
+end)
+
+local function GetClosestTarget()
+    local closest = nil
+    local shortestDist = FOVRadius
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            if TeamCheck and player.Team == LocalPlayer.Team then continue end
+
+            local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local center = Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y/2)
+                local dist = (Vector2.new(pos.X,pos.Y) - center).Magnitude
+
+                if dist <= shortestDist then
+                    if WallCheck then
+                        local origin = workspace.CurrentCamera.CFrame.Position
+                        local direction = (player.Character.HumanoidRootPart.Position - origin).Unit * 1000
+                        local rayParams = RaycastParams.new()
+                        rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+                        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+                        local result = workspace:Raycast(origin,direction,rayParams)
+                        if result and result.Instance:IsDescendantOf(player.Character) then
+                            closest = player
+                            shortestDist = dist
+                        end
+                    else
+                        closest = player
+                        shortestDist = dist
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if AimbotEnabled then
+        local target = GetClosestTarget()
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local headPos = target.Character.HumanoidRootPart.Position
+            local camPos = workspace.CurrentCamera.CFrame.Position
+            workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame:Lerp(CFrame.new(camPos,headPos),0.4)
+        end
+    end
+end)
+
+-- ======================
+-- Toggles e Slider Funcionais
+-- ======================
+Combate:CreateToggle({
+    Name = "Ativar Aimbot",
+    CurrentValue = false,
+    Callback = function(value)
+        AimbotEnabled = value
+        FOVCircle.Visible = value
+    end
+})
+
+Combate:CreateToggle({
+    Name = "Time Check",
+    CurrentValue = true,
+    Callback = function(value)
+        TeamCheck = value
+    end
+})
+
+Combate:CreateToggle({
+    Name = "Geral Check",
+    CurrentValue = true,
+    Callback = function(value)
+        WallCheck = value
+    end
+})
+
+Combate:CreateSlider({
+    Name = "Tamanho do FOV",
+    Range = {50,300},
+    Increment = 5,
+    CurrentValue = FOVRadius,
+    Callback = function(value)
+        FOVRadius = value
+        FOVCircle.Radius = value
+    end
+})
+
+-- ======================
+-- Aba "Player"
+-- ======================
+local PlayerTab = Window:CreateTab("Player")
+
+local noclipEnabled = false
+
+PlayerTab:CreateToggle({
+    Name = "Ativar Noclip",
+    CurrentValue = false,
+    Callback = function(Value)
+        noclipEnabled = Value
+        
+        if Value then
+            if not _G.__noclip_connection then
+                _G.__noclip_connection = RunService.Stepped:Connect(function()
+                    if noclipEnabled then
+                        local char = LocalPlayer.Character
+                        if char then
+                            for _, v in ipairs(char:GetDescendants()) do
+                                if v:IsA("BasePart") then
+                                    v.CanCollide = false
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        else
+            local char = LocalPlayer.Character
+            if char then
+                for _, v in ipairs(char:GetDescendants()) do
+                    if v:IsA("BasePart") then
+                        v.CanCollide = true
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- ======================
+-- Toggle Float (com floatEnable/floatDisable)
+-- ======================
+PlayerTab:CreateToggle({
+    Name = "Ativar Float",
+    CurrentValue = false,
+    Callback = function(Value)
+        -- ===== WRAPPER =====
+        local Players = game:GetService("Players")
+        local UserInputService = game:GetService("UserInputService")
+        local RunService = game:GetService("RunService")
+        local StarterGui = game:GetService("StarterGui")
+        local LocalPlayer = Players.LocalPlayer
+
+        -- Funções do Float (mantidas exatamente como você enviou)
+        local function randomString()
+            local function rnd(len)
+                local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                local s = {}
+                for i=1,(len or 10) do
+                    s[#s+1] = chars:sub(math.random(1,#chars), math.random(1,#chars))
+                end
+                return table.concat(s)
+            end
+            return "flt_"..tostring(tick()):gsub("%.","").."_"..rnd(6)
+        end
+
+        local function notify(title, text)
+            pcall(function()
+                StarterGui:SetCore("SendNotification", {Title = tostring(title), Text = tostring(text), Duration = 3})
+            end)
+            print("[NOTIFY]", title, text)
+        end
+
+        local function getRoot(char)
+            if not char then return nil end
+            return char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+        end
+
+        local downBindable = Instance.new("BindableEvent")
+        local upBindable = Instance.new("BindableEvent")
+        UserInputService.InputBegan:Connect(function(input, processed)
+            if processed then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                downBindable:Fire(tostring(input.KeyCode):gsub("Enum.KeyCode.",""):lower())
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input, processed)
+            if processed then return end
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                upBindable:Fire(tostring(input.KeyCode):gsub("Enum.KeyCode.",""):lower())
+            end
+        end)
+        local IYMouse = {KeyDown = downBindable.Event, KeyUp = upBindable.Event}
+
+        -- ===== FLOAT =====
+        local Floating = false
+        local floatName = randomString()
+        local FloatingFunc, floatDied, qUp, qDown, eUp, eDown
+
+        local function floatEnable()
+            Floating = true
+            local pchar = LocalPlayer.Character
+            if pchar and not pchar:FindFirstChild(floatName) then
+                task.spawn(function()
+                    local Float = Instance.new('Part')
+                    Float.Name = floatName
+                    Float.Parent = pchar
+                    Float.Transparency = 1
+                    Float.Size = Vector3.new(2,0.2,1.5)
+                    Float.Anchored = true
+                    local FloatValue = -3.1
+                    Float.CFrame = getRoot(pchar).CFrame * CFrame.new(0,FloatValue,0)
+                    notify('Float','Float Enabled (Q = down & E = up)')
+
+                    qUp = IYMouse.KeyUp:Connect(function(KEY)
+                        if KEY == 'q' then FloatValue = FloatValue + 0.5 end
+                    end)
+                    eUp = IYMouse.KeyUp:Connect(function(KEY)
+                        if KEY == 'e' then FloatValue = FloatValue - 1.5 end
+                    end)
+                    qDown = IYMouse.KeyDown:Connect(function(KEY)
+                        if KEY == 'q' then FloatValue = FloatValue - 0.5 end
+                    end)
+                    eDown = IYMouse.KeyDown:Connect(function(KEY)
+                        if KEY == 'e' then FloatValue = FloatValue + 1.5 end
+                    end)
+
+                    floatDied = pchar:FindFirstChildOfClass('Humanoid').Died:Connect(function()
+                        if FloatingFunc then FloatingFunc:Disconnect() end
+                        Float:Destroy()
+                        qUp:Disconnect()
+                        qDown:Disconnect()
+                        eUp:Disconnect()
+                        eDown:Disconnect()
+                        floatDied:Disconnect()
+                    end)
+
+                    local function FloatPadLoop()
+                        if pchar:FindFirstChild(floatName) and getRoot(pchar) then
+                            Float.CFrame = getRoot(pchar).CFrame * CFrame.new(0,FloatValue,0)
+                        else
+                            if FloatingFunc then FloatingFunc:Disconnect() end
+                            Float:Destroy()
+                            qUp:Disconnect()
+                            qDown:Disconnect()
+                            eUp:Disconnect()
+                            eDown:Disconnect()
+                            floatDied:Disconnect()
+                        end
+                    end
+                    FloatingFunc = RunService.Heartbeat:Connect(FloatPadLoop)
+                end)
+            end
+        end
+
+        local function floatDisable()
+            Floating = false
+            local pchar = LocalPlayer.Character
+            notify('Float','Float Disabled')
+            if pchar:FindFirstChild(floatName) then pchar:FindFirstChild(floatName):Destroy() end
+            if floatDied then
+                if FloatingFunc then FloatingFunc:Disconnect() end
+                qUp:Disconnect()
+                qDown:Disconnect()
+                eUp:Disconnect()
+                eDown:Disconnect()
+                floatDied:Disconnect()
+            end
+        end
+
+        if Value then
+            floatEnable()
+        else
+            floatDisable()
+        end
+    end
+})
+
+PlayerTab:CreateButton({
+    Name = "Fling Carros",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://pastefy.app/nS77w1ob/raw"))()
+        end)
+        if success then
+            print("Loadstring executado com sucesso!")
+            
+            warn("Erro ao executar loadstring:", err)
+        end
+    end
+})
+
+-- Variáveis globais para controlar speed
+local SpeedActive = false
+local DESIRED_SPEED = 60
+local NORMAL_SPEED = 16
+local player = game.Players.LocalPlayer
+
+-- Função que aplica a velocidade e mantém contra overrides
+local function monitorHumanoid(humanoid)
+    if not humanoid then return end
+
+    -- Conexão para bloquear mudanças externas
+    humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if SpeedActive then
+            if humanoid.WalkSpeed ~= DESIRED_SPEED then
+                humanoid.WalkSpeed = DESIRED_SPEED
+            end
+        else
+            if humanoid.WalkSpeed ~= NORMAL_SPEED then
+                humanoid.WalkSpeed = NORMAL_SPEED
+            end
+        end
+    end)
+
+    -- Loop anti-oscilação
+    spawn(function()
+        while humanoid and humanoid.Parent do
+            humanoid.WalkSpeed = SpeedActive and DESIRED_SPEED or NORMAL_SPEED
+            task.wait(0.05)
+        end
+    end)
+end
+
+-- Aplica no personagem atual e futuros
+player.CharacterAdded:Connect(function(char)
+    monitorHumanoid(char:WaitForChild("Humanoid"))
+end)
+if player.Character and player.Character:FindFirstChild("Humanoid") then
+    monitorHumanoid(player.Character.Humanoid)
+end
+
+-- Toggle ativa/desativa speed
+PlayerTab:CreateToggle({
+    Name = "Ativar Speed",
+    CurrentValue = false,
+    Callback = function(v)
+        SpeedActive = v
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.WalkSpeed = v and DESIRED_SPEED or NORMAL_SPEED
+        end
+    end,
+})
+
+-- Slider para definir o valor do speed
+PlayerTab:CreateSlider({
+    Name = "Speed Value",
+    Range = {16, 60},
+    Increment = 1,
+    Suffix = "WS",
+    CurrentValue = 60,
+    Callback = function(v)
+        DESIRED_SPEED = v
+        if SpeedActive and player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.WalkSpeed = DESIRED_SPEED
+        end
+    end,
+})
+
+local TeleportTab = Window:CreateTab("Teleport")
+
+TeleportTab:CreateButton({
+    Name = "Teleport Desmanche",
+    Description = "Clica aqui para executar algo",
+    Callback = function()
+        local TARGET = Vector3.new(-2770, 4.06, -762.72)   -- X, Y, Z
+
+        local LP = game:GetService("Players").LocalPlayer
+        local char = LP.Character or LP.CharacterAdded:Wait()
+        local root = char:WaitForChild("HumanoidRootPart")
+        root.CFrame = CFrame.new(TARGET)
+    end
+})
+
+TeleportTab:CreateButton({
+    Name = "Teleport Prefeitura",
+    Description = "Clica aqui para executar algo",
+    Callback = function()
+        local TARGET = Vector3.new(-1285, 6.45, -162.11)   -- X, Y, Z
+
+        local LP = game:GetService("Players").LocalPlayer
+        local char = LP.Character or LP.CharacterAdded:Wait()
+        local root = char:WaitForChild("HumanoidRootPart")
+        root.CFrame = CFrame.new(TARGET)
+    end
+})
+
+TeleportTab:CreateButton({
+    Name = "Teleport ComprarGun",
+    Description = "Clica aqui para executar algo",
+    Callback = function()
+        local TARGET = Vector3.new(-1296, 4.28, -386.12)   -- X, Y, Z
+
+        local LP = game:GetService("Players").LocalPlayer
+        local char = LP.Character or LP.CharacterAdded:Wait()
+        local root = char:WaitForChild("HumanoidRootPart")
+        root.CFrame = CFrame.new(TARGET)
+    end
+})
+
+TeleportTab:CreateButton({
+    Name = "Teleport Bau",
+    Description = "Clica aqui para executar algo",
+    Callback = function()
+        local TARGET = Vector3.new(576.03, -322.20, 1094.51)   -- X, Y, Z
+
+        local LP = game:GetService("Players").LocalPlayer
+        local char = LP.Character or LP.CharacterAdded:Wait()
+        local root = char:WaitForChild("HumanoidRootPart")
+        root.CFrame = CFrame.new(TARGET)
+    end
+})
+
+-- Cria a Tab "Farm Carga"
+local FarmTab = Window:CreateTab("Farm Carga") -- sem ícone
+
+-- Label explicativo
+FarmTab:CreateLabel("Aperte abaixo para pegar a caixa 📦 !")
+
+-- Botão para teleportar
+FarmTab:CreateButton({
+    Name = "Teleportar para Pegar",
+    Description = "Clique para ir para as coordenadas para pegar a caixa",
+    Callback = function()
+        -- Tudo dentro de pcall para não quebrar o Rayfield
+        pcall(function()
+            local player = game.Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            local root = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart")
+
+            -- Coordenadas de destino
+            local targetPosition = Vector3.new(-1993.16, 10.77, -1638.94)
+
+            -- Verifica se está em veículo
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.SeatPart and humanoid.SeatPart:IsA("VehicleSeat") then
+                local car = humanoid.SeatPart.Parent
+                if car.PrimaryPart == nil then
+                    car.PrimaryPart = humanoid.SeatPart -- define PrimaryPart
+                end
+                car:SetPrimaryPartCFrame(CFrame.new(targetPosition))
+            else
+                -- Se não estiver no carro, teleporta só o player
+                root.CFrame = CFrame.new(targetPosition)
+            end
+        end)
+    end
+})
+
+-- Label explicativo
+FarmTab:CreateLabel("Aperte abaixo para entregar a caixa 📦 !")
+
+-- Botão para teleportar
+FarmTab:CreateButton({
+    Name = "Teleportar para Entregar",
+    Description = "Clique para ir para as coordenadas para pegar a caixa",
+    Callback = function()
+        -- Tudo dentro de pcall para não quebrar o Rayfield
+        pcall(function()
+            local player = game.Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            local root = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart")
+
+            -- Coordenadas de destino
+            local targetPosition = Vector3.new(-2521.46, 42.99, 5633.83)
+
+            -- Verifica se está em veículo
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.SeatPart and humanoid.SeatPart:IsA("VehicleSeat") then
+                local car = humanoid.SeatPart.Parent
+                if car.PrimaryPart == nil then
+                    car.PrimaryPart = humanoid.SeatPart -- define PrimaryPart
+                end
+                car:SetPrimaryPartCFrame(CFrame.new(targetPosition))
+            else
+                -- Se não estiver no carro, teleporta só o player
+                root.CFrame = CFrame.new(targetPosition)
+            end
+        end)
+    end
+})
